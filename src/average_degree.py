@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 
 from __future__ import print_function
-from datetime import datetime
+from collections import deque
+from datetime import datetime, timedelta
 from dateutil import parser
 from decimal import Decimal, ROUND_DOWN
 import json
@@ -29,10 +30,9 @@ class TweetGraph(object):
 	def _update_edge_for_add(self, from_vertex, to_vertex, ts):
 		# If there is already an edge, check its TS is older; If not, we used its TS
 		if to_vertex in self._graph[from_vertex]:
-			oldTs = self._graph[from_vertex][to_vertex]
-			if oldTs > ts:
+			if self._graph[from_vertex][to_vertex] > ts:
 				#do nothing
-				pass
+				return
 
 		self._graph[from_vertex][to_vertex] = ts
 
@@ -81,6 +81,72 @@ class TweetGraph(object):
 
 		return Decimal(degree_sum*1.0/vertex_sum).quantize(TWOPLACES, rounding=ROUND_DOWN)
 
+class TweetQueue(object):
+	"""
+	Queue that manages the 60-second window
+	"""
+	def __init__(self, tweet_graph):
+		self._queue = deque([])
+		self._tweet_graph = tweet_graph
+
+	def _get_max_ts(self):
+		if len(self._queue) == 0:
+			return None
+		else:
+			return self._queue[-1][0]
+
+	def add_to_queue(self, hashtags, created_at):
+		# This tweet is discarded because it has not effect to the graph
+		if self._get_max_ts() is not None and created_at < self._get_max_ts() - timedelta(seconds=60):
+			return
+
+		# Queue is either empty or in order
+		if len(self._queue) == 0 or self._get_max_ts() <= created_at:
+			self._update_queue(hashtags, created_at)
+		# Queue is out of order
+		else:
+			inorder_list = deque([])
+			while self._get_max_ts() > created_at:
+				inorder_list.appendleft(self._queue.pop())
+			self._update_queue(hashtags, created_at)
+			self._queue.extend(inorder_list)
+
+	def _update_queue(self, hashtags, created_at):
+		# Remove the older tweets from the front of the queue
+		if len(self._queue) > 0:
+			while self._queue[0][0] + timedelta(seconds=60) < created_at:
+				old_tuple = self._queue.popleft()
+				print('popping: ' + str(old_tuple[0]))
+				self._remove_hashtags(old_tuple[1], old_tuple[0])
+
+		self._queue.append((created_at, hashtags))
+		self._add_hashtags(hashtags, created_at)
+
+	def _add_hashtags(self, hashtags, created_at):
+		if len(hashtags) == 0:
+			return
+		if len(hashtags) == 1:
+			self._tweet_graph.add_vertex(hashtags[0], created_at)
+			return
+
+		for i in range(len(hashtags)-1):
+			for j in range(i+1, len(hashtags)):
+				self._tweet_graph.add_edge(hashtags[i], hashtags[j], created_at)
+
+	def _remove_hashtags(self, hashtags, created_at):
+		if len(hashtags) == 0:
+			return
+		if len(hashtags) == 1:
+			self._tweet_graph.remove_vertex(hashtags[0], created_at)
+			return
+
+		for i in range(len(hashtags)-1):
+			for j in range(i+1, len(hashtags)):
+				self._tweet_graph.remove_edge(hashtags[i], hashtags[j], created_at)
+
+	def print_queue(self):
+		print([repr(q) for q in self._queue])
+
 class TweetLoader(object):
 	""" 
 	A helper class for coverting a json file.
@@ -101,7 +167,8 @@ class TweetLoader(object):
 						continue
 
 					created_at = parser.parse(tweet_json['created_at'])
-					hashtags = tweet_json['entities']['hashtags']
+					hashtags_json = tweet_json['entities']['hashtags']
+					hashtags = [h['text'] for h in hashtags_json]
 					print(linecount, repr(created_at), repr(hashtags))
 					linecount+=1
 		except:
