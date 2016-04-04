@@ -155,12 +155,14 @@ class TweetLoader(object):
 	A helper class for coverting a json file.
 	"""
 
-	def load_tweets_from_file(self, filename):
+	def process_tweets(self, input_filename, output_filename):
 		""" 
 		"""
 
+		graph = TweetGraph()
+		queue = TweetQueue(graph)
 		try:
-			with open(filename, 'r') as json_file:
+			with open(input_filename, 'r') as json_file, open(output_filename, 'w') as output_file:
 				linecount = 0
 				for line in json_file:
 					tweet_json = json.loads(line)
@@ -170,9 +172,10 @@ class TweetLoader(object):
 						continue
 
 					created_at = parser.parse(tweet_json['created_at'])
-					hashtags_json = tweet_json['entities']['hashtags']
-					hashtags = [h['text'] for h in hashtags_json]
-					print(linecount, repr(created_at), repr(hashtags))
+					hashtags = [h['text'] for h in tweet_json['entities']['hashtags']]
+					#print(linecount, repr(created_at), repr(hashtags))
+					queue.add_to_queue(hashtags, created_at)
+					output_file.write(str(graph.compute_avg_degree())+'\n')
 					linecount+=1
 		except:
 			print("Unexpected error:", sys.exc_info()[0])
@@ -184,4 +187,4 @@ if __name__ == '__main__':
 		raise InputError('Missing file arguments')
 	print('input' + sys.argv[1])
 	print('output' + sys.argv[2])
-	TweetLoader().load_tweets_from_file(sys.argv[1])
+	TweetLoader().process_tweets(sys.argv[1], sys.argv[2])
