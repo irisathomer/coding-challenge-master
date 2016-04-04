@@ -43,12 +43,12 @@ class TweetGraph(object):
 		self._update_edge_for_add(vertex1, vertex2, ts)
 		self._update_edge_for_add(vertex2, vertex1, ts)
 
+	# Proper clean up expects edges to be removed first
 	def remove_vertex(self, vertex, ts):
-		assert(vertex in self._vertices)
-		if self._vertices[vertex] <= ts:
-			self._vertices.delete(vertex)
-			assert(len(self._graph[vertex]) == 0)
-			self._graph.delete(vertex)
+		if len(self._graph[vertex]) == 0:
+			del(self._graph[vertex])
+			if vertex in self._vertices and self._vertices[vertex] <= ts:
+				del(self._vertices[vertex])
 
 	def _update_edge_for_remove(self, from_vertex, to_vertex, ts):
 		assert(to_vertex in self._graph[from_vertex])
@@ -78,6 +78,9 @@ class TweetGraph(object):
 		for v in self._graph.values():
 			vertex_sum += 1
 			degree_sum += len(v)
+
+		if vertex_sum == 0:
+			return Decimal('0.00')
 
 		return Decimal(degree_sum*1.0/vertex_sum).quantize(TWOPLACES, rounding=ROUND_DOWN)
 
