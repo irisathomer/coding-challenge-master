@@ -157,8 +157,8 @@ class TweetQueue(object):
 			self._queue.extend(inorder_list)
 
 	def _update_queue(self, hashtags, created_at):
-		# Remove the older tweets from the front of the queue and from the graph
-		while len(self._queue) > 0 and self._queue[0][0] + timedelta(seconds=60) < created_at:
+		# Remove the older tweets from the front of the queue and from the graph. Exclusive window.
+		while len(self._queue) > 0 and self._queue[0][0] + timedelta(seconds=60) <= created_at:
 			old_tuple = self._queue.popleft()
 			#print('popping: ' + str(old_tuple[0]))
 			self._remove_hashtags(old_tuple[1], old_tuple[0])
