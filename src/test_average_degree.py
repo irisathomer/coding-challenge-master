@@ -4,6 +4,8 @@ from dateutil import parser
 from decimal import Decimal
 
 class TestTweetGraph(unittest.TestCase):
+	''' Unit test for average_degree. I ran out of time here'''
+
 	def test_graph_simple(self):
 		g = TweetGraph()
 		t0 = parser.parse('Thu Mar 24 17:51:10 +0000 2016')
@@ -123,6 +125,40 @@ class TestTweetGraph(unittest.TestCase):
 		#g.print_graph()
 		self.assertEquals(0.00, g.compute_avg_degree())
 		self.assertEquals(0, len(g._vertices))
+
+	def test_queue_duplicate(self):
+		g = TweetGraph()
+		q = TweetQueue(g)
+		t0 = parser.parse('Thu Mar 24 17:51:10 +0000 2016')
+		q.add_to_queue(['Spark','Apache'], t0)
+		self.assertEquals(1.00, g.compute_avg_degree())
+		#g.print_graph()
+		t1 = parser.parse('Thu Mar 24 17:51:15 +0000 2016')
+		q.add_to_queue(['Apache','Hadoop','Storm'], t1)
+		self.assertEquals(2.00, g.compute_avg_degree())
+		self.assertEquals(4, len(g._vertices))
+		self.assertEquals(2, len(q._queue))
+		#g.print_graph()
+
+		q.add_to_queue(['Apache','Hadoop'], t1)
+		self.assertEquals(2.00, g.compute_avg_degree())
+		self.assertEquals(4, len(g._vertices))
+		self.assertEquals(3, len(q._queue))
+
+		t2 = parser.parse('Thu Mar 24 17:52:10 +0000 2016')
+		q.add_to_queue([], t2)
+		#g.print_graph()
+		self.assertEquals(2.00, g.compute_avg_degree())
+		self.assertEquals(3, len(g._vertices))
+		self.assertEquals(3, len(q._queue))
+
+		t3 = parser.parse('Thu Mar 24 17:52:15 +0000 2016')
+		q.add_to_queue([], t3)
+		#g.print_graph()
+		self.assertEquals(0.00, g.compute_avg_degree())
+		self.assertEquals(0, len(g._vertices))
+		self.assertEquals(0, len(g._graph))
+		self.assertEquals(2, len(q._queue))
 
 	def test_queue_out_of_order(self):
 		g = TweetGraph()

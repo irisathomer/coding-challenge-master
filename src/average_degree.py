@@ -72,7 +72,7 @@ class TweetGraph(object):
 			del(self._graph[vertex])
 
 	def _update_edge_for_remove(self, from_vertex, to_vertex, ts):
-		if to_vertex not in self._graph[from_vertex]:
+		if from_vertex not in self._graph or to_vertex not in self._graph[from_vertex]:
 			return
 
 		# If there is no newer edge, we remove it

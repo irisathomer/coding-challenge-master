@@ -7,3 +7,5 @@ pip install python-dateutil
 
 or use requirements.txt:
 pip install -r requirements.txt
+
+Use ./run.sh run. You will need to put the input file at tweet_input/tweets.txt.
