@@ -103,6 +103,7 @@ class TestTweetGraph(unittest.TestCase):
 		self.assertEquals(Decimal('1.66'), g.compute_avg_degree())
 
 	def test_queue_emtpy(self):
+		''' Test empty hashtags'''
 		g = TweetGraph()
 		q = TweetQueue(g)
 		t0 = parser.parse('Thu Mar 24 17:51:10 +0000 2016')
@@ -114,19 +115,24 @@ class TestTweetGraph(unittest.TestCase):
 		self.assertEquals(2.00, g.compute_avg_degree())
 		#g.print_graph()
 
+		# This should pop the t0 tweet
 		t2 = parser.parse('Thu Mar 24 17:52:10 +0000 2016')
 		q.add_to_queue([], t2)
 		#g.print_graph()
 		self.assertEquals(2.00, g.compute_avg_degree())
 		self.assertEquals(3, len(g._vertices))
+		self.assertEquals(2, len(q._queue))
 
+		# This should pop the t1 tweet
 		t3 = parser.parse('Thu Mar 24 17:52:15 +0000 2016')
 		q.add_to_queue([], t3)
 		#g.print_graph()
 		self.assertEquals(0.00, g.compute_avg_degree())
 		self.assertEquals(0, len(g._vertices))
+		self.assertEquals(2, len(q._queue))
 
 	def test_queue_duplicate(self):
+		''' Test duplicate edges'''
 		g = TweetGraph()
 		q = TweetQueue(g)
 		t0 = parser.parse('Thu Mar 24 17:51:10 +0000 2016')
@@ -191,24 +197,36 @@ class TestTweetGraph(unittest.TestCase):
 		#g.print_graph()
 		#q.print_queue()
 		self.assertEquals(Decimal('1.66'), g.compute_avg_degree())
+		self.assertEquals(5, len(q._queue))
 
+		# This is out-of-order
 		t6 = parser.parse('Thu Mar 24 17:52:10 +0000 2016')
 		q.add_to_queue(['Flink', 'HBase'], t6)
 		#g.print_graph()
 		#q.print_queue()
 		self.assertEquals(Decimal('2.00'), g.compute_avg_degree())
+		self.assertEquals(6, len(q._queue))
+		# Check that t5 is after t6
+		self.assertEquals(t1, q._queue[0][0])
+		self.assertEquals(t5, q._queue[-1][0])
+		self.assertEquals(t6, q._queue[-2][0])
 
+		# This is discarded
 		t7 = parser.parse('Thu Mar 24 17:51:10 +0000 2016')
 		q.add_to_queue(['Cassandra', 'NoSQL'], t7)
 		#g.print_graph()
 		#q.print_queue()
 		self.assertEquals(Decimal('2.00'), g.compute_avg_degree())
+		self.assertEquals(6, len(q._queue))
 
 		t8 = parser.parse('Thu Mar 24 17:52:20 +0000 2016')
 		q.add_to_queue(['Kafka', 'Apache'], t8)
 		#g.print_graph()
 		#q.print_queue()
 		self.assertEquals(Decimal('1.66'), g.compute_avg_degree())
+		self.assertEquals(6, len(q._queue))
+		self.assertEquals(t2, q._queue[0][0])
+		self.assertEquals(t8, q._queue[-1][0])
 
 if __name__ == '__main__':
     unittest.main()
