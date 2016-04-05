@@ -137,8 +137,6 @@ class TweetQueue(object):
 			return self._queue[-1][0]
 
 	def add_to_queue(self, hashtags, created_at):
-		if len(hashtags) == 0:
-			return
 		# This tweet is discarded because it is earlier than the 60-second window and has no effect to the graph
 		if self._get_max_ts() is not None and created_at < self._get_max_ts() - timedelta(seconds=60):
 			return
