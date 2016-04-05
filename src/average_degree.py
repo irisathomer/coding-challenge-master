@@ -116,10 +116,15 @@ class TweetQueue(object):
 	It also updates _tweet_graph as the window slids.
 
 	The state maintains:
-	1. A queue that only contains 60 seconds of tweets, in temporal order.
+	1. A queue that only contains 60 seconds of tweets, in temporal order. Each element is a tuple of (timestamp, [hashtags])
 	2. A TweetGraph
 
-
+	This is implemented using the python deque structure, which has a pointer to the left and right end of the queue. 
+		Assuming that for each new in-order tweet, we need to remove k tweets with h hashtags, then the average runtime is O(kh^2). 
+	The scanning of the 60-second window is O(1).
+		However, the worst case is when a tweet is out of order, we need to pop the queue to the right insertion point, which can be O(n)
+	if n is the size of the queue. The assumption is that this is infrequent. If that is not true, then one can do a binary search on the
+	queue to find the insertion point as an improvement.
 	"""
 	def __init__(self, tweet_graph):
 		self._queue = deque([])
@@ -134,17 +139,19 @@ class TweetQueue(object):
 	def add_to_queue(self, hashtags, created_at):
 		if len(hashtags) == 0:
 			return
-		# This tweet is discarded because it has not effect to the graph
+		# This tweet is discarded because it is earlier than the 60-second window and has no effect to the graph
 		if self._get_max_ts() is not None and created_at < self._get_max_ts() - timedelta(seconds=60):
 			return
 
 		# Ensure there is no duplicate in hashtags
 		hashtags = list(set(hashtags))
+
 		# Queue is either empty or in order
 		if self._get_max_ts() is None or self._get_max_ts() <= created_at:
 			self._update_queue(hashtags, created_at)
-		# Queue is out of order
 		else:
+		# Queue is out of order. We pop the queue from the right until we find an insertion point, then we add the elements back.
+		# This is to maintain temporal order.
 			inorder_list = deque([])
 			while self._get_max_ts() is not None and self._get_max_ts() > created_at:
 				inorder_list.appendleft(self._queue.pop())
@@ -152,12 +159,13 @@ class TweetQueue(object):
 			self._queue.extend(inorder_list)
 
 	def _update_queue(self, hashtags, created_at):
-		# Remove the older tweets from the front of the queue
+		# Remove the older tweets from the front of the queue and from the graph
 		while len(self._queue) > 0 and self._queue[0][0] + timedelta(seconds=60) < created_at:
 			old_tuple = self._queue.popleft()
 			#print('popping: ' + str(old_tuple[0]))
 			self._remove_hashtags(old_tuple[1], old_tuple[0])
 
+		# Add the tweet to the queue and also to the graph
 		self._queue.append((created_at, hashtags))
 		self._add_hashtags(hashtags, created_at)
 
@@ -188,11 +196,12 @@ class TweetQueue(object):
 
 class TweetLoader(object):
 	""" 
-	A helper class for coverting a json file.
+	Main class that processes an input file of tweets and outputs the average degree to an output file.
 	"""
 
 	def process_tweets(self, input_filename, output_filename):
 		""" 
+		Reads from input_filename, computes the average degree of the 60-second window and writes to output_filename.
 		"""
 
 		graph = TweetGraph()
