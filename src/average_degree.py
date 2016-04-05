@@ -69,9 +69,9 @@ class TweetGraph(object):
 	def print_graph(self):
 		print(self.compute_avg_degree())
 		for k, v in self._graph.iteritems():
-			print(k, [str(k1) + ', ' + str(v1) for k1, v1 in v.iteritems()])
+			print(k, [k1.encode('utf-8') + ', ' + str(v1) for k1, v1 in v.iteritems()])
 		for k, v in self._vertices.iteritems():
-			print(k, repr(v))
+			print(k, str(v))
 
 	def compute_avg_degree(self):
 		degree_sum = 0
