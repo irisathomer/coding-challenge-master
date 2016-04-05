@@ -99,6 +99,8 @@ class TweetQueue(object):
 			return self._queue[-1][0]
 
 	def add_to_queue(self, hashtags, created_at):
+		if len(hashtags) == 0:
+			return
 		# This tweet is discarded because it has not effect to the graph
 		if self._get_max_ts() is not None and created_at < self._get_max_ts() - timedelta(seconds=60):
 			return
@@ -119,7 +121,7 @@ class TweetQueue(object):
 		if len(self._queue) > 0:
 			while self._queue[0][0] + timedelta(seconds=60) < created_at:
 				old_tuple = self._queue.popleft()
-				print('popping: ' + str(old_tuple[0]))
+				#print('popping: ' + str(old_tuple[0]))
 				self._remove_hashtags(old_tuple[1], old_tuple[0])
 
 		self._queue.append((created_at, hashtags))
@@ -178,7 +180,7 @@ class TweetLoader(object):
 						queue.add_to_queue(hashtags, created_at)
 						output_file.write(str(graph.compute_avg_degree())+'\n')
 					except:
-						print("Unexpected error:", sys.exc_info()[0])
+						print(linecount, " Unexpected error:", sys.exc_info()[0])
 						output_file.write('ERROR\n')
 						continue
 					finally:
