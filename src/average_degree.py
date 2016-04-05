@@ -7,6 +7,7 @@ from dateutil import parser
 from decimal import Decimal, ROUND_DOWN
 import json
 import sys
+import logging
 
 '''example of program that calculates the average degree of hashtags'''
 
@@ -105,6 +106,8 @@ class TweetQueue(object):
 		if self._get_max_ts() is not None and created_at < self._get_max_ts() - timedelta(seconds=60):
 			return
 
+		# Ensure there is no duplicate in hashtags
+		hashtags = list(set(hashtags))
 		# Queue is either empty or in order
 		if len(self._queue) == 0 or self._get_max_ts() <= created_at:
 			self._update_queue(hashtags, created_at)
@@ -180,7 +183,7 @@ class TweetLoader(object):
 						queue.add_to_queue(hashtags, created_at)
 						output_file.write(str(graph.compute_avg_degree())+'\n')
 					except:
-						print(linecount, " Unexpected error:", sys.exc_info()[0])
+						logging.exception(str(linecount) + ': Unexpected error')
 						output_file.write('ERROR\n')
 						continue
 					finally:
