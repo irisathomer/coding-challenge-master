@@ -165,18 +165,24 @@ class TweetLoader(object):
 			with open(input_filename, 'r') as json_file, open(output_filename, 'w') as output_file:
 				linecount = 0
 				for line in json_file:
-					tweet_json = json.loads(line)
-					if 'limit' in tweet_json.keys():
-						print('skipping line: ', linecount)
-						linecount+=1
-						continue
 
-					created_at = parser.parse(tweet_json['created_at'])
-					hashtags = [h['text'] for h in tweet_json['entities']['hashtags']]
-					#print(linecount, repr(created_at), repr(hashtags))
-					queue.add_to_queue(hashtags, created_at)
-					output_file.write(str(graph.compute_avg_degree())+'\n')
-					linecount+=1
+					try:
+						tweet_json = json.loads(line)
+						if 'limit' in tweet_json.keys():
+							print('skipping line: ', linecount)
+							continue
+
+						created_at = parser.parse(tweet_json['created_at'])
+						hashtags = [h['text'] for h in tweet_json['entities']['hashtags']]
+						#print(linecount, repr(created_at), repr(hashtags))
+						queue.add_to_queue(hashtags, created_at)
+						output_file.write(str(graph.compute_avg_degree())+'\n')
+					except:
+						print("Unexpected error:", sys.exc_info()[0])
+						output_file.write('ERROR\n')
+						continue
+					finally:
+						linecount+=1
 		except:
 			print("Unexpected error:", sys.exc_info()[0])
 			raise
