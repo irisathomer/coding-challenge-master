@@ -9,19 +9,33 @@ import json
 import sys
 import logging
 
-'''example of program that calculates the average degree of hashtags'''
+'''Program calculates the average degree of hashtags. 
+
+	TweetLoader is the main class that processes an input file of tweets and outputs the average degree to an output file.
+	TweetQueue is a helper class that represents the 60-second window of tweets.
+	TweetGraph is a helper class that represents the hashtag graph.'''
 
 TWOPLACES = Decimal(10) ** -2
 
 class TweetGraph(object):
 	"""
-	Graph representation of the hashtags
+	An undirected graph representation of the hashtags.
+
+	The state maintains 2 dictionaries: 
+		1. self._graph is an adjacency list (using a dict of dict) that maintains all the edges. Because it's an undirected graph,
+			an edge between V1 and V2 will appear twice, in self._graph[V1][V2] and self._graph[V2][V1]. The 'weight' of the edge is
+			the maximum timestamp of the tweet that the edge appears in.
+		2. self._vertices is a dictionary of vertex and the maximum timestamp of the tweet that the vertex appears in.
+
+		add/remove operation to the graph is O(1) runtime. compute_avg_degree is O(V) runtime.
 	"""
 	def __init__(self):
 		self._graph = {}
 		self._vertices = {}
 
 	def add_vertex(self, vertex, ts):
+		""" Adds a vertex only to the graph. Use add_edge() if you want to add an edge.
+		"""
 		if vertex not in self._vertices:
 			self._vertices[vertex] = ts
 			self._graph[vertex] = {}
@@ -29,15 +43,18 @@ class TweetGraph(object):
 			self._vertices[vertex] = ts			
 
 	def _update_edge_for_add(self, from_vertex, to_vertex, ts):
-		# If there is already an edge, check its TS is older; If not, we used its TS
+		""" If there is already an edge, update the timestamp if ts is newer. Adds a new edge if needed.
+		"""
 		if to_vertex in self._graph[from_vertex]:
 			if self._graph[from_vertex][to_vertex] > ts:
-				#do nothing
+				#do nothing because the edge timestamp is newer.
 				return
 
 		self._graph[from_vertex][to_vertex] = ts
 
 	def add_edge(self, vertex1, vertex2, ts):
+		""" Adds an edge between vertex1 and vertex2. This adds the vertices if needed and also adds bidirectional edges.
+		"""
 		self.add_vertex(vertex1, ts)
 		self.add_vertex(vertex2, ts)
 
@@ -46,6 +63,9 @@ class TweetGraph(object):
 
 	# Proper clean up expects edges to be removed first
 	def remove_vertex(self, vertex, ts):
+		""" Removes a vertex only from the graph. Use remove_edge() if you want to remove an edge.
+			This guarantees a vertex is removed only if ts >= the timestamp of the vertex.
+		"""
 		if vertex in self._vertices and self._vertices[vertex] <= ts:
 			del(self._vertices[vertex])
 		if vertex not in self._vertices and vertex in self._graph and len(self._graph[vertex]) == 0:
@@ -60,6 +80,9 @@ class TweetGraph(object):
 			del(self._graph[from_vertex][to_vertex])
 
 	def remove_edge(self, vertex1, vertex2, ts):
+		""" Adds an edge between vertex1 and vertex2. It also cleans up the vertices if needed and handles the bidirectionality.
+			This guarantees an edge or a vertex is removed only if ts >= the timestamp of the edge or vertex.
+		"""
 		self._update_edge_for_remove(vertex1, vertex2, ts)
 		self._update_edge_for_remove(vertex2, vertex1, ts)
 
@@ -67,6 +90,7 @@ class TweetGraph(object):
 		self.remove_vertex(vertex2, ts)
 
 	def print_graph(self):
+		""" Helper function to see the state of the graph """
 		print(self.compute_avg_degree())
 		for k, v in self._graph.iteritems():
 			print(k, [k1.encode('utf-8') + ', ' + str(v1) for k1, v1 in v.iteritems()])
@@ -74,6 +98,7 @@ class TweetGraph(object):
 			print(k, str(v))
 
 	def compute_avg_degree(self):
+		""" Computes the average degree of the graph."""
 		degree_sum = 0
 		vertex_sum = 0
 		for v in self._graph.values():
@@ -87,7 +112,14 @@ class TweetGraph(object):
 
 class TweetQueue(object):
 	"""
-	Queue that manages the 60-second window
+	A queue that manages the 60-second window of tweets and enforces the temporal order within the queue. 
+	It also updates _tweet_graph as the window slids.
+
+	The state maintains:
+	1. A queue that only contains 60 seconds of tweets, in temporal order.
+	2. A TweetGraph
+
+
 	"""
 	def __init__(self, tweet_graph):
 		self._queue = deque([])
@@ -109,7 +141,7 @@ class TweetQueue(object):
 		# Ensure there is no duplicate in hashtags
 		hashtags = list(set(hashtags))
 		# Queue is either empty or in order
-		if len(self._queue) == 0 or self._get_max_ts() <= created_at:
+		if self._get_max_ts() is None or self._get_max_ts() <= created_at:
 			self._update_queue(hashtags, created_at)
 		# Queue is out of order
 		else:
