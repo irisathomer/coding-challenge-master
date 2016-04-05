@@ -21,6 +21,7 @@ class TestTweetGraph(unittest.TestCase):
 		t2 = parser.parse('Thu Mar 24 17:51:30 +0000 2016')
 		g.add_vertex('Apache', t2)
 		self.assertEquals(2.00, g.compute_avg_degree())
+		self.assertEquals(t2, g._vertices['Apache'])
 		#g.print_graph()
 		t3 = parser.parse('Thu Mar 24 17:51:55 +0000 2016')
 		g.add_edge('Flink', 'Spark', t3)
@@ -36,6 +37,8 @@ class TestTweetGraph(unittest.TestCase):
 		g.remove_edge('Spark', 'Apache', t0)
 		#g.print_graph()
 		self.assertEquals(Decimal('1.66'), g.compute_avg_degree())
+		self.assertEquals(t5, g._vertices['Apache'])
+		self.assertTrue('Apache' in g._graph)
 
 	def test_graph_out_of_order(self):
 		g = TweetGraph()
@@ -72,6 +75,31 @@ class TestTweetGraph(unittest.TestCase):
 		g.add_edge('Flink', 'HBase', t6)
 		self.assertEquals(Decimal('2.00'), g.compute_avg_degree())
 		#g.print_graph()
+		self.assertEquals(t6, g._vertices['Flink'])
+		self.assertEquals(t4, g._vertices['HBase'])
+
+	def test_graph_remove_edge_not_vertex(self):
+		g = TweetGraph()
+		t0 = parser.parse('Thu Mar 24 17:51:10 +0000 2016')
+		g.add_edge('Spark', 'Apache', t0)
+		self.assertEquals(t0, g._vertices['Spark'])
+		self.assertEquals(t0, g._vertices['Apache'])
+		self.assertEquals(t0, g._graph['Spark']['Apache'])
+		self.assertEquals(t0, g._graph['Apache']['Spark'])
+
+		t1 = parser.parse('Thu Mar 24 17:51:30 +0000 2016')
+		g.add_vertex('Apache', t1)
+		self.assertEquals(t0, g._vertices['Spark'])
+		self.assertEquals(t1, g._vertices['Apache'])
+		self.assertEquals(t0, g._graph['Spark']['Apache'])
+		self.assertEquals(t0, g._graph['Apache']['Spark'])
+
+		t2 = parser.parse('Thu Mar 24 17:52:10 +0000 2016')
+		g.remove_edge('Spark', 'Apache', t0)
+		self.assertFalse('Spark' in g._vertices)
+		self.assertEquals(t1, g._vertices['Apache'])
+		self.assertFalse('Spark' in g._graph)
+		self.assertEquals({}, g._graph['Apache'])
 
 	def test_queue_simple(self):
 		g = TweetGraph()
