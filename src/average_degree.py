@@ -52,11 +52,11 @@ class TweetGraph(object):
 				del(self._vertices[vertex])
 
 	def _update_edge_for_remove(self, from_vertex, to_vertex, ts):
-		assert(to_vertex in self._graph[from_vertex])
-		current_ts = self._graph[from_vertex][to_vertex]
+		if to_vertex not in self._graph[from_vertex]:
+			return
 
 		# If there is no newer edge, we remove it
-		if current_ts <= ts:
+		if self._graph[from_vertex][to_vertex] <= ts:
 			del(self._graph[from_vertex][to_vertex])
 
 	def remove_edge(self, vertex1, vertex2, ts):
@@ -114,18 +114,17 @@ class TweetQueue(object):
 		# Queue is out of order
 		else:
 			inorder_list = deque([])
-			while self._get_max_ts() > created_at:
+			while self._get_max_ts() is not None and self._get_max_ts() > created_at:
 				inorder_list.appendleft(self._queue.pop())
 			self._update_queue(hashtags, created_at)
 			self._queue.extend(inorder_list)
 
 	def _update_queue(self, hashtags, created_at):
 		# Remove the older tweets from the front of the queue
-		if len(self._queue) > 0:
-			while self._queue[0][0] + timedelta(seconds=60) < created_at:
-				old_tuple = self._queue.popleft()
-				#print('popping: ' + str(old_tuple[0]))
-				self._remove_hashtags(old_tuple[1], old_tuple[0])
+		while len(self._queue) > 0 and self._queue[0][0] + timedelta(seconds=60) < created_at:
+			old_tuple = self._queue.popleft()
+			#print('popping: ' + str(old_tuple[0]))
+			self._remove_hashtags(old_tuple[1], old_tuple[0])
 
 		self._queue.append((created_at, hashtags))
 		self._add_hashtags(hashtags, created_at)
