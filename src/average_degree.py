@@ -46,10 +46,10 @@ class TweetGraph(object):
 
 	# Proper clean up expects edges to be removed first
 	def remove_vertex(self, vertex, ts):
-		if len(self._graph[vertex]) == 0:
+		if vertex in self._vertices and self._vertices[vertex] <= ts:
+			del(self._vertices[vertex])
+		if vertex not in self._vertices and vertex in self._graph and len(self._graph[vertex]) == 0:
 			del(self._graph[vertex])
-			if vertex in self._vertices and self._vertices[vertex] <= ts:
-				del(self._vertices[vertex])
 
 	def _update_edge_for_remove(self, from_vertex, to_vertex, ts):
 		if to_vertex not in self._graph[from_vertex]:
